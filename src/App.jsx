@@ -451,7 +451,7 @@ export default function App() {
                   <span style={{ fontSize: 12, color: "#6b6560" }}>✓ <strong>{completeComisiones}</strong>/{totalComisiones} comisiones completas</span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
                 <div style={{ textAlign: "center" }}>
                   <ArcGauge pct={pctReqs} size={90} color="#2c5f8a" />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Requerimientos</div>
@@ -463,6 +463,16 @@ export default function App() {
                 <div style={{ textAlign: "center" }}>
                   <ArcGauge pct={pctTotal} size={110} color={pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020"} />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Total</div>
+                </div>
+                {/* COSTO TOTAL */}
+                <div style={{ textAlign: "center", background: "#1a2744", padding: "12px 20px", borderRadius: 4, minWidth: 110 }}>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total</div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#c47b1a", lineHeight: 1 }}>
+                    S/ {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).reduce((s, r) => s + (parseFloat(r.monto) || 0), 0), 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
+                    {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} items
+                  </div>
                 </div>
               </div>
             </div>
@@ -494,7 +504,17 @@ export default function App() {
                   <div style={{ flex: 1, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                     <div>
                       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 15, fontWeight: 700, color: "#1a2744", marginBottom: 3 }}>{c.titulo}</div>
-                      <div style={{ fontSize: 12, color: "#6b6560" }}>Titular: <strong style={{ color: "#1a1a1a", fontWeight: 500 }}>{c.titular}</strong></div>
+                      <div style={{ fontSize: 12, color: "#6b6560", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                        <span>Titular: <strong style={{ color: "#1a1a1a", fontWeight: 500 }}>{c.titular}</strong></span>
+                        {(() => {
+                          const total = (c.requerimientos || []).reduce((s, r) => s + (parseFloat(r.monto) || 0), 0);
+                          return total > 0 ? (
+                            <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 11, fontWeight: 700, color: "#c47b1a", background: "#fff8ee", border: "1px solid #f0d8a8", padding: "1px 8px", borderRadius: 2 }}>
+                              S/ {total.toFixed(2)}
+                            </span>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                       {isAdmin && adminMode && (
@@ -559,11 +579,19 @@ export default function App() {
                     {/* Tab 1: Requerimientos */}
                     {tab === 1 && (
                       <div style={{ padding: "20px 24px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
                           <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#6b6560" }}>Lista de requerimientos</span>
-                          <div style={{ display: "flex", gap: 16 }}>
+                          <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                             <span style={{ fontSize: 12, fontFamily: "'Syne',sans-serif", color: "#1a5c38" }}>✓ {doneReqs} listos</span>
                             <span style={{ fontSize: 12, fontFamily: "'Syne',sans-serif", color: "#9b2020" }}>○ {reqs.length - doneReqs} pendientes</span>
+                            {(() => {
+                              const montoTotal = reqs.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0);
+                              return montoTotal > 0 ? (
+                                <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 12, fontWeight: 700, color: "#c47b1a", background: "#fff8ee", border: "1px solid #f0d8a8", padding: "2px 10px", borderRadius: 2 }}>
+                                  Total: S/ {montoTotal.toFixed(2)}
+                                </span>
+                              ) : null;
+                            })()}
                           </div>
                         </div>
                         {reqs.length > 0 && (
