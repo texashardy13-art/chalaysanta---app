@@ -5,6 +5,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebas
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { INITIAL_DATA } from "./initialData";
 
+// v4 - mobile fix + gauges + countdown fix
 const VIEWER_PASS = "chalaysanta2026";
 const ADMIN_EMAIL = "texashardy13@gmail.com";
 
@@ -24,11 +25,6 @@ export default function App() {
   const [openCards, setOpenCards] = useState({});
   const [activeTab, setActiveTab] = useState({});
   const countdownRef = useRef();
-  const parallaxRef = useRef();
-  const [prevNums, setPrevNums] = useState({dias:'--',horas:'--',min:'--',seg:'--'});
-  const [arcAnimated, setArcAnimated] = useState(false);
-  const [countAnimated, setCountAnimated] = useState(false);
-  const [skeletonDone, setSkeletonDone] = useState(false);
 
   // ── FIREBASE REALTIME LISTENER ──
   useEffect(() => {
@@ -54,65 +50,6 @@ export default function App() {
     });
     return () => unsub();
   }, []);
-
-  // ── SKELETON DONE - only runs once ──
-  const skeletonShownRef = useRef(false);
-  useEffect(() => {
-    if (data && role && data.comisiones && !skeletonShownRef.current) {
-      skeletonShownRef.current = true;
-      setTimeout(() => setSkeletonDone(true), 600);
-    }
-  }, [data, role]);
-
-  // ── SCROLL REVEAL ──
-  useEffect(() => {
-    if (!skeletonDone) return;
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); observer.unobserve(e.target); } });
-    }, { threshold: 0.12 });
-    document.querySelectorAll('.reveal,.reveal-left,.reveal-scale').forEach(el => observer.observe(el));
-    return () => observer.disconnect();
-  }, [skeletonDone]);
-
-  // ── PARALLAX ──
-  useEffect(() => {
-    const handleScroll = () => {
-      const el = document.getElementById('parallax-img');
-      if (el) el.style.transform = `translateY(${window.scrollY * 0.3}px)`;
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // ── ARC ANIMATION - only once ──
-  const arcShownRef = useRef(false);
-  useEffect(() => {
-    if (!skeletonDone || arcShownRef.current) return;
-    arcShownRef.current = true;
-    setTimeout(() => setArcAnimated(true), 600);
-  }, [skeletonDone]);
-
-  // ── COUNT ANIMATED FLAG ──
-  useEffect(() => {
-    if (skeletonDone) setCountAnimated(true);
-  }, [skeletonDone]);
-
-  useEffect(() => {
-    if (!skeletonDone || !data || !data.header?.titulo1) return;
-    const t1 = data.header?.titulo1 || '';
-    const t2 = data.header?.titulo2 || '';
-    const sub = data.header?.sub || '';
-    let i1=0,i2=0,isub=0;
-    const type1 = setInterval(() => {
-        const type2 = setInterval(() => {
-            const typesub = setInterval(() => {
-            }, 18);
-          }
-        }, 60);
-      }
-    }, 55);
-    return () => clearInterval(type1);
-  }, [skeletonDone, data]);
 
   // ── COUNTDOWN ──
   const fechaISORef = useRef(null);
@@ -161,7 +98,6 @@ export default function App() {
       setLoginError("Correo o contraseña incorrectos");
     }
   };
-
 
   const doLogout = async () => {
     if (role === "admin") await signOut(auth);
@@ -277,7 +213,15 @@ export default function App() {
     setPanelData({ ...panelData, requerimientos: reqs });
   };
 
-  const loginScreen = () => (
+  // ── LOADING ──
+  if (!data) return (
+    <div style={{ position: "fixed", inset: 0, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontFamily: "sans-serif", fontSize: 14, letterSpacing: 3, textTransform: "uppercase" }}>Cargando...</div>
+    </div>
+  );
+
+  // ── LOGIN SCREEN ──
+  if (!role) return (
     <div style={{ position: "fixed", inset: 0, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'IBM Plex Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');`}</style>
       <div style={{ background: "#fff", padding: "40px 48px", width: "100%", maxWidth: 420, borderTop: "4px solid #c47b1a" }}>
@@ -330,34 +274,6 @@ export default function App() {
     </div>
   );
 
-  // ── LOADING ──
-  if (!data) return (
-    <div style={{ position: 'fixed', inset: 0, background: '#1a2744', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'sans-serif', fontSize: 14, letterSpacing: 3, textTransform: 'uppercase' }}>Cargando...</div>
-    </div>
-  );
-
-  if (!role) return loginScreen();
-
-  if (!skeletonDone) return (
-    <div style={{ fontFamily: "'IBM Plex Sans',sans-serif", background: "#f4f2ee", minHeight: "100vh" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-      .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
-      @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-      <div style={{ background: "#1a2744", padding: "12px 48px", height: 48 }} />
-      <div className="skeleton" style={{ width: "100%", height: 260 }} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 48 }}>
-        <div className="skeleton" style={{ height: 24, width: "30%", marginBottom: 28 }} />
-        <div className="skeleton" style={{ height: 100, marginBottom: 14, borderRadius: 4 }} />
-        {[1,2,3,4].map(i => (
-          <div key={i} className="skeleton" style={{ height: 64, marginBottom: 14, borderRadius: 4, opacity: 1 - i*0.15 }} />
-        ))}
-      </div>
-    </div>
-  );
-
-
-
   const isAdmin = role === "admin";
   const h = data.header;
   const a = data.alertas;
@@ -367,26 +283,6 @@ export default function App() {
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", background: "#f4f2ee", minHeight: "100vh", color: "#1a1a1a" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-        /* ── TYPOGRAPHY RESET ── */
-        html { font-size: 16px; }
-        body { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-        h1,h2,h3,h4 { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.1; }
-        p, span, div, li, td { font-family: 'IBM Plex Sans', sans-serif; }
-        /* Uniform font sizes */
-        .text-xs  { font-size: 10px !important; }
-        .text-sm  { font-size: 12px !important; }
-        .text-base{ font-size: 14px !important; }
-        .text-lg  { font-size: 16px !important; }
-        .text-xl  { font-size: 18px !important; }
-        .font-syne{ font-family: 'Syne', sans-serif !important; }
-        .font-ibm { font-family: 'IBM Plex Sans', sans-serif !important; }
-        /* Uniform card text */
-        .card-title-text { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
-        .card-sub-text   { font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; }
-        .label-text      { font-family: 'Syne', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
-        .value-text      { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; }
-        .badge-text      { font-family: 'Syne', sans-serif; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
-        .monto-badge     { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; }
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         :root{
           --primary:#1a2744;--accent:#2c5f8a;--accent2:#c47b1a;
@@ -403,61 +299,6 @@ export default function App() {
         .card-anim{animation:fadeUp 0.4s ease both;}
         .cover-hover:hover .cover-overlay{opacity:1!important;}
         input:focus,textarea:focus,select:focus{outline:2px solid #2c5f8a;}
-
-        /* ── SCROLL REVEAL ── */
-        .reveal{opacity:0;transform:translateY(32px);transition:opacity 0.7s ease,transform 0.7s ease;}
-        .reveal.visible{opacity:1;transform:translateY(0);}
-        .reveal-left{opacity:0;transform:translateX(-32px);transition:opacity 0.7s ease,transform 0.7s ease;}
-        .reveal-left.visible{opacity:1;transform:translateX(0);}
-        .reveal-scale{opacity:0;transform:scale(0.92);transition:opacity 0.6s ease,transform 0.6s ease;}
-        .reveal-scale.visible{opacity:1;transform:scale(1);}
-
-        /* ── SKELETON LOADING ── */
-        .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        .skeleton-header{width:100%;height:260px;background:linear-gradient(90deg,#1a2744 25%,#243660 50%,#1a2744 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
-        .skeleton-card{height:64px;margin-bottom:14px;border-radius:4px;}
-        .skeleton-text{height:14px;margin-bottom:8px;border-radius:2px;}
-        .skeleton-text.short{width:60%;}
-
-        /* ── FLIP COUNTER ── */
-        .flip-digit{display:inline-flex;flex-direction:column;overflow:hidden;height:1.1em;position:relative;}
-        .flip-digit-inner{display:flex;flex-direction:column;transition:transform 0.4s cubic-bezier(.4,0,.2,1);}
-        @keyframes flipIn{0%{transform:rotateX(-90deg);opacity:0;}60%{transform:rotateX(10deg);}100%{transform:rotateX(0);opacity:1;}}
-        .flip-num{animation:flipIn 0.35s ease both;}
-
-        /* ── PROGRESS BAR ANIMATED ── */
-        .progress-bar-fill{width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
-        .progress-bar-fill.animated{width:var(--target-width);}
-
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        .cursor{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;animation:blink 0.8s infinite;vertical-align:text-bottom;}
-
-        /* ── CARD EXPAND ── */
-        .card-body-animated{overflow:hidden;transition:max-height 0.45s cubic-bezier(.4,0,.2,1),opacity 0.35s ease;}
-
-        /* ── HOVER EFFECTS ── */
-        .commission-card-hover{transition:box-shadow 0.25s,transform 0.25s,border-color 0.25s;}
-        .commission-card-hover:hover{box-shadow:0 8px 32px rgba(0,0,0,0.13);transform:translateY(-2px);}
-
-        /* ── ARC ANIMATED ── */
-        .arc-path{stroke-dasharray:1000;stroke-dashoffset:1000;transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);}
-        .arc-path.animated{stroke-dashoffset:0;}
-
-        /* ── PARALLAX ── */
-        .parallax-cover{will-change:transform;transition:transform 0.05s linear;}
-
-        /* ── COUNT UP ── */
-        .count-up{font-variant-numeric:tabular-nums;}
-
-        /* ── SYMMETRY FIX ── */
-        .sym-label{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-        .sym-value{font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;}
-        .sym-key{font-family:'Syne',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6560;}
-        .sym-val{font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;color:#1a1a1a;}
-        .sym-task{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#1a1a1a;line-height:1.5;}
-        .sym-badge{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;padding:4px 12px;border-radius:2px;}
-        .sym-detail{font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:#6b6560;}
         @media(max-width:600px){
           .title2-anim{word-break:break-word!important;max-width:100%!important;font-size:clamp(26px,8vw,48px)!important;}
           .title1-anim{font-size:clamp(22px,7vw,40px)!important;}
@@ -506,7 +347,7 @@ export default function App() {
         {/* Cover image */}
         <div className="cover-hover" style={{ width: "100%", height: 260, overflow: "hidden", position: "relative", background: "#0d1b35" }}>
           {data.images?.cover
-            ? <img id="parallax-img" src={data.images.cover} alt="" style={{ width: "100%", height: "130%", objectFit: "cover", opacity: 0.5, marginTop: "-15%", willChange: "transform" }} />
+            ? <img src={data.images.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
             : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#0d1b35 0%,#1a2744 60%,#2c5f8a 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.2)", textTransform: "uppercase" }}>📷 Imagen de portada</div>
           }
           {isAdmin && adminMode && (
@@ -528,9 +369,7 @@ export default function App() {
           <h1 className="title2-anim" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,8vw,62px)", fontWeight: 800, lineHeight: 1.1, color: "#c47b1a", marginBottom: 14, wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%" }}>
             {h.titulo2}
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300 }}>
-            {h.sub}
-          </p>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300 }}>{h.sub}</p>
 
           {/* COUNTDOWN */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32 }}>
@@ -542,7 +381,7 @@ export default function App() {
                 {[["dias","días"],["horas","horas"],["min","min"],["seg","seg"]].map(([key, label], i) => (
                   <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div className="cd-box-resp" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", textAlign: "center", minWidth: 60, flex: "1 1 60px", backdropFilter: "blur(4px)" }}>
-                      <span className="cd-num-resp flip-num" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: "clamp(18px,5vw,32px)", fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums", minWidth: "2ch", textAlign: "center" }}>
+                      <span className="cd-num-resp" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: "clamp(18px,5vw,32px)", fontWeight: 800, color: "#fff", lineHeight: 1 }}>
                         {String(countdown[key] ?? "--").padStart(2, "0")}
                       </span>
                       <span className="cd-unit-resp" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{label}</span>
@@ -601,11 +440,11 @@ export default function App() {
           const pctComisiones = totalComisiones > 0 ? Math.round(completeComisiones / totalComisiones * 100) : 0;
           const pctTotal = Math.round((pctReqs + pctComisiones) / 2);
           return (
-            <div className="reveal-scale" style={{ background: "#fff", border: "1px solid #d8d4cc", borderRadius: 4, padding: "20px 28px", marginBottom: 28, display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
+            <div style={{ background: "#fff", border: "1px solid #d8d4cc", borderRadius: 4, padding: "20px 28px", marginBottom: 28, display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 180 }}>
                 <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#6b6560", marginBottom: 4 }}>Avance total del proyecto</div>
                 <div style={{ height: 8, background: "#e0dbd2", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-                  <div style={{ height: "100%", background: pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020", borderRadius: 4, width: countAnimated ? `${pctTotal}%` : "0%", transition: "width 1.4s cubic-bezier(.4,0,.2,1)" }} />
+                  <div style={{ height: "100%", background: pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020", borderRadius: 4, width: `${pctTotal}%`, transition: "width .6s" }} />
                 </div>
                 <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 12, color: "#6b6560" }}>✓ <strong>{doneReqs}</strong>/{totalReqs} requerimientos listos</span>
@@ -614,25 +453,25 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctReqs} size={90} color="#2c5f8a" animated={arcAnimated} />
+                  <ArcGauge pct={pctReqs} size={90} color="#2c5f8a" />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Requerimientos</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctComisiones} size={90} color="#c47b1a" animated={arcAnimated} />
+                  <ArcGauge pct={pctComisiones} size={90} color="#c47b1a" />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Comisiones</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctTotal} size={110} color={pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020"} animated={arcAnimated} />
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Proyecto Total</div>
+                  <ArcGauge pct={pctTotal} size={110} color={pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020"} />
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Total</div>
                 </div>
                 {/* COSTO TOTAL */}
                 <div style={{ textAlign: "center", background: "#1a2744", padding: "12px 20px", borderRadius: 4, minWidth: 110 }}>
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total del Evento</div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total</div>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#c47b1a", lineHeight: 1 }}>
-                    S/ {(data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0).toFixed(2)}
+                    S/ {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).reduce((s, r) => s + (parseFloat(r.monto) || 0), 0), 0).toFixed(2)}
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
-                    {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} artículos
+                    {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} items
                   </div>
                 </div>
               </div>
@@ -656,7 +495,7 @@ export default function App() {
             const doneReqs = reqs.filter(r => r.done).length;
             const pct = reqs.length > 0 ? Math.round(doneReqs / reqs.length * 100) : 0;
             return (
-              <div key={i} className="card-anim reveal commission-card-hover" style={{ background: "#fff", border: `1px solid ${isAdmin && adminMode ? "#c4b89a" : "#d8d4cc"}`, borderRadius: 4, overflow: "hidden", animationDelay: `${i * 0.05}s` }}>
+              <div key={i} className="card-anim" style={{ background: "#fff", border: `1px solid ${isAdmin && adminMode ? "#c4b89a" : "#d8d4cc"}`, borderRadius: 4, overflow: "hidden", animationDelay: `${i * 0.05}s` }}>
                 {/* Card header */}
                 <div onClick={() => setOpenCards(o => ({ ...o, [i]: !o[i] }))} style={{ display: "flex", alignItems: "stretch", cursor: "pointer", userSelect: "none" }}>
                   <div style={{ width: 56, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>
@@ -684,7 +523,7 @@ export default function App() {
                           ✎ Editar
                         </button>
                       )}
-                      <ArcGauge pct={pct} size={52} color={pct >= 80 ? "#1a5c38" : pct >= 40 ? "#c47b1a" : "#9b2020"} bg="#e0dbd2" animated={arcAnimated} />
+                      <ArcGauge pct={pct} size={52} color={pct >= 80 ? "#1a5c38" : pct >= 40 ? "#c47b1a" : "#9b2020"} bg="#e0dbd2" />
                       <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, padding: "4px 12px", borderRadius: 2, background: c.status === "complete" ? "#edf7f1" : "#fdf0f0", color: c.status === "complete" ? "#1a5c38" : "#9b2020" }}>
                         {c.status === "complete" ? "Completo" : "Falta personal"}
                       </span>
@@ -695,7 +534,7 @@ export default function App() {
 
                 {/* Card body */}
                 {isOpen && (
-                  <div style={{ borderTop: "1px solid #d8d4cc", animation: "fadeUp 0.35s ease both" }}>
+                  <div style={{ borderTop: "1px solid #d8d4cc" }}>
                     {/* Tabs */}
                     <div style={{ display: "flex", borderBottom: "1px solid #d8d4cc", background: "#fafaf8" }}>
                       {["📋 Tareas", `📦 Requerimientos ${reqs.length > 0 ? `${doneReqs}/${reqs.length}` : ""}`].map((label, ti) => (
@@ -757,7 +596,7 @@ export default function App() {
                         </div>
                         {reqs.length > 0 && (
                           <div style={{ height: 4, background: "#e0dbd2", borderRadius: 2, overflow: "hidden", marginBottom: 14 }}>
-                            <div style={{ height: "100%", background: "#1a5c38", borderRadius: 2, width: `${pct}%`, transition: "width 1.2s cubic-bezier(.4,0,.2,1)" }} />
+                            <div style={{ height: "100%", background: "#1a5c38", borderRadius: 2, width: `${pct}%`, transition: "width .4s" }} />
                           </div>
                         )}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -935,14 +774,16 @@ export default function App() {
 
 
 // ── ARC GAUGE COMPONENT ──
-function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "", animated = false }) {
+function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "" }) {
   const r = (size / 2) - 8;
   const cx = size / 2;
   const cy = size / 2;
+  // Draw arc from 210deg to 330deg (240deg sweep) like speedometer
   const startAngle = 210;
   const sweep = 240;
-  const toRad = deg => (deg * Math.PI) / 180;
+  const endAngle = startAngle + sweep * (pct / 100);
 
+  const toRad = deg => (deg * Math.PI) / 180;
   const arcPath = (start, end, radius) => {
     const s = { x: cx + radius * Math.cos(toRad(start)), y: cy + radius * Math.sin(toRad(start)) };
     const e = { x: cx + radius * Math.cos(toRad(end)), y: cy + radius * Math.sin(toRad(end)) };
@@ -950,50 +791,25 @@ function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "
     return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y}`;
   };
 
-  // Calculate stroke-dasharray for animation
-  const fullArcEnd = startAngle + sweep;
-  const fullPath = arcPath(startAngle, fullArcEnd, r);
-  const progressEnd = startAngle + sweep * (pct / 100);
-  const progressPath = arcPath(startAngle, progressEnd > startAngle + 0.1 ? progressEnd : startAngle + 0.1, r);
-
-  // Animated count up
-  const [displayPct, setDisplayPct] = useState(0);
-  useEffect(() => {
-    if (!animated) { setDisplayPct(pct); return; }
-    let cur = 0;
-    const timer = setInterval(() => {
-      cur += 1;
-      if (cur >= pct) { setDisplayPct(pct); clearInterval(timer); }
-      else setDisplayPct(cur);
-    }, 1200 / Math.max(pct, 1));
-    return () => clearInterval(timer);
-  }, [pct, animated]);
-
-  const [drawn, setDrawn] = useState(false);
-  useEffect(() => {
-    if (animated) setTimeout(() => setDrawn(true), 300);
-    else setDrawn(true);
-  }, [animated]);
-
-  const circumference = Math.PI * r * (sweep / 180);
-  const offset = circumference * (1 - (drawn ? displayPct / 100 : 0));
-
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{overflow:"visible"}}>
-      <path d={arcPath(startAngle, fullArcEnd, r)} fill="none" stroke={bg} strokeWidth={6} strokeLinecap="round" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* Background arc */}
+      <path d={arcPath(210, 210 + 240, r)} fill="none" stroke={bg} strokeWidth={6} strokeLinecap="round" />
+      {/* Progress arc */}
       {pct > 0 && (
-        <path
-          d={progressPath}
-          fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={animated ? offset : 0}
-          style={{ transition: drawn ? "stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)" : "none" }}
-        />
+        <path d={arcPath(210, endAngle, r)} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" />
       )}
-      <text x={cx} y={cy + 2} textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.2, fontWeight: 800, fill: color, transition: "all 0.3s" }}>
-        {displayPct}%
+      {/* Percentage text */}
+      <text x={cx} y={cy + 4} textAnchor="middle" dominantBaseline="middle"
+        style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.2, fontWeight: 800, fill: color }}>
+        {pct}%
       </text>
+      {label && (
+        <text x={cx} y={cy + size * 0.22} textAnchor="middle"
+          style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.1, fill: "#6b6560" }}>
+          {label}
+        </text>
+      )}
     </svg>
   );
 }
