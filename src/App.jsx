@@ -60,7 +60,7 @@ export default function App() {
 
   // ── SKELETON DONE ──
   useEffect(() => {
-    if (data && role) setTimeout(() => setSkeletonDone(true), 400);
+    if (data && role && data.comisiones) setTimeout(() => setSkeletonDone(true), 800);
   }, [data, role]);
 
   // ── SCROLL REVEAL ──
@@ -91,7 +91,7 @@ export default function App() {
 
   // ── COUNT UP ANIMATION ──
   useEffect(() => {
-    if (!skeletonDone || !data) return;
+    if (!skeletonDone || !data || !data.comisiones) return;
     const allReqs = (data.comisiones||[]).flatMap(c=>c.requerimientos||[]);
     const totalCost = (data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0);
     let start = 0;
@@ -109,7 +109,7 @@ export default function App() {
 
   // ── TYPEWRITER ──
   useEffect(() => {
-    if (!skeletonDone || !data) return;
+    if (!skeletonDone || !data || !data.header?.titulo1) return;
     const t1 = data.header?.titulo1 || '';
     const t2 = data.header?.titulo2 || '';
     const sub = data.header?.sub || '';
