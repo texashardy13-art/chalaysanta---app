@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebas
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { INITIAL_DATA } from "./initialData";
 
-// v4 - mobile fix + gauges + countdown fix
+// v9 - timing fixes for typewriter and data loading
 const VIEWER_PASS = "chalaysanta2026";
 const ADMIN_EMAIL = "texashardy13@gmail.com";
 
@@ -648,7 +648,7 @@ export default function App() {
                 <div style={{ textAlign: "center", background: "#1a2744", padding: "12px 20px", borderRadius: 4, minWidth: 110 }}>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total</div>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#c47b1a", lineHeight: 1 }}>
-                    S/ {displayCost.toFixed(2)}
+                    S/ {(displayCost || (data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0)).toFixed(2)}
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
                     {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} items
