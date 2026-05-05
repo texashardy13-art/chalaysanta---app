@@ -25,13 +25,6 @@ export default function App() {
   const [openCards, setOpenCards] = useState({});
   const [activeTab, setActiveTab] = useState({});
   const countdownRef = useRef();
-  const parallaxRef = useRef();
-  const [prevNums, setPrevNums] = useState({dias:'--',horas:'--',min:'--',seg:'--'});
-  const [arcAnimated, setArcAnimated] = useState(false);
-  const [countAnimated, setCountAnimated] = useState(false);
-  const [displayCost, setDisplayCost] = useState(0);
-  const [typewriter, setTypewriter] = useState({t1:'',t2:'',sub:'',t1done:false,t2done:false,subdone:false});
-  const [skeletonDone, setSkeletonDone] = useState(false);
 
   // ── FIREBASE REALTIME LISTENER ──
   useEffect(() => {
@@ -57,80 +50,6 @@ export default function App() {
     });
     return () => unsub();
   }, []);
-
-  // ── SKELETON DONE ──
-  useEffect(() => {
-    if (data && role) setTimeout(() => setSkeletonDone(true), 400);
-  }, [data, role]);
-
-  // ── SCROLL REVEAL ──
-  useEffect(() => {
-    if (!skeletonDone) return;
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); observer.unobserve(e.target); } });
-    }, { threshold: 0.12 });
-    document.querySelectorAll('.reveal,.reveal-left,.reveal-scale').forEach(el => observer.observe(el));
-    return () => observer.disconnect();
-  }, [skeletonDone, data]);
-
-  // ── PARALLAX ──
-  useEffect(() => {
-    const handleScroll = () => {
-      const el = document.getElementById('parallax-img');
-      if (el) el.style.transform = `translateY(${window.scrollY * 0.3}px)`;
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // ── ARC ANIMATION ──
-  useEffect(() => {
-    if (!skeletonDone) return;
-    setTimeout(() => setArcAnimated(true), 600);
-  }, [skeletonDone]);
-
-  // ── COUNT UP ANIMATION ──
-  useEffect(() => {
-    if (!skeletonDone || !data) return;
-    const allReqs = (data.comisiones||[]).flatMap(c=>c.requerimientos||[]);
-    const totalCost = (data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0);
-    let start = 0;
-    const duration = 1400;
-    const step = 16;
-    const increment = totalCost / (duration / step);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= totalCost) { setDisplayCost(totalCost); clearInterval(timer); }
-      else setDisplayCost(start);
-    }, step);
-    setTimeout(() => setCountAnimated(true), 500);
-    return () => clearInterval(timer);
-  }, [skeletonDone, data]);
-
-  // ── TYPEWRITER ──
-  useEffect(() => {
-    if (!skeletonDone || !data) return;
-    const t1 = data.header?.titulo1 || '';
-    const t2 = data.header?.titulo2 || '';
-    const sub = data.header?.sub || '';
-    let i1=0,i2=0,isub=0;
-    setTypewriter({t1:'',t2:'',sub:'',t1done:false,t2done:false,subdone:false});
-    const type1 = setInterval(() => {
-      if(i1<=t1.length){ setTypewriter(tw=>({...tw,t1:t1.slice(0,i1)})); i1++; }
-      else { clearInterval(type1); setTypewriter(tw=>({...tw,t1done:true}));
-        const type2 = setInterval(() => {
-          if(i2<=t2.length){ setTypewriter(tw=>({...tw,t2:t2.slice(0,i2)})); i2++; }
-          else { clearInterval(type2); setTypewriter(tw=>({...tw,t2done:true}));
-            const typesub = setInterval(() => {
-              if(isub<=sub.length){ setTypewriter(tw=>({...tw,sub:sub.slice(0,isub)})); isub++; }
-              else { clearInterval(typesub); setTypewriter(tw=>({...tw,subdone:true})); }
-            }, 18);
-          }
-        }, 60);
-      }
-    }, 55);
-    return () => clearInterval(type1);
-  }, [skeletonDone, data]);
 
   // ── COUNTDOWN ──
   const fechaISORef = useRef(null);
@@ -178,246 +97,6 @@ export default function App() {
     } catch {
       setLoginError("Correo o contraseña incorrectos");
     }
-  };
-
-
-  // ── GENERATE PDF REPORT ──
-  const generateReport = () => {
-    const comisiones = data.comisiones || [];
-    const allReqs = comisiones.flatMap(c => c.requerimientos || []);
-    const totalCost = comisiones.reduce((sum, c) => sum + (c.requerimientos || []).reduce((s, r) => s + (parseFloat(r.monto) || 0), 0), 0);
-    const doneReqs = allReqs.filter(r => r.done).length;
-    const completeComisiones = comisiones.filter(c => c.status === "complete").length;
-    const pctReqs = allReqs.length > 0 ? Math.round(doneReqs / allReqs.length * 100) : 0;
-    const pctComisiones = comisiones.length > 0 ? Math.round(completeComisiones / comisiones.length * 100) : 0;
-    const pctTotal = Math.round((pctReqs + pctComisiones) / 2);
-    const now = new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
-
-    const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<title>Informe ${data.header?.titulo1 || ""} ${data.header?.titulo2 || ""}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'IBM Plex Sans',sans-serif;color:#1a1a1a;background:#fff;font-size:13px;line-height:1.6;}
-  .page{max-width:800px;margin:0 auto;padding:48px 40px;}
-  /* HEADER */
-  .rpt-header{background:#1a2744;color:#fff;padding:36px 40px;border-bottom:6px solid #c47b1a;}
-  .rpt-tag{display:inline-block;background:#c47b1a;color:#fff;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;padding:4px 12px;border-radius:2px;margin-bottom:14px;}
-  .rpt-title1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1.1;}
-  .rpt-title2{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:#c47b1a;line-height:1.1;margin-bottom:8px;}
-  .rpt-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:20px;}
-  .rpt-meta{display:flex;gap:32px;flex-wrap:wrap;}
-  .rpt-meta-item{display:flex;flex-direction:column;gap:2px;}
-  .rpt-meta-label{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-  .rpt-meta-value{font-size:13px;font-weight:500;color:#fff;}
-  /* SUMMARY */
-  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0;}
-  .summary-card{background:#f4f2ee;border:1px solid #d8d4cc;padding:16px;border-radius:4px;text-align:center;}
-  .summary-card.highlight{background:#1a2744;border-color:#1a2744;}
-  .summary-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#1a2744;line-height:1;}
-  .summary-card.highlight .summary-num{color:#c47b1a;}
-  .summary-label{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b6560;margin-top:4px;}
-  .summary-card.highlight .summary-label{color:rgba(255,255,255,0.6);}
-  /* SECTION */
-  .section{margin:32px 0;}
-  .section-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#1a2744;padding-bottom:8px;border-bottom:2px solid #1a2744;margin-bottom:16px;}
-  /* ALERT */
-  .alert-box{background:#c47b1a;padding:14px 20px;border-radius:3px;margin-bottom:20px;}
-  .alert-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;margin-bottom:6px;}
-  .alert-dates{display:flex;gap:20px;flex-wrap:wrap;}
-  .date-pill{background:rgba(0,0,0,0.2);color:#fff;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:3px 10px;border-radius:2px;}
-  .date-desc{font-size:12px;color:rgba(255,255,255,0.9);}
-  /* COMISION CARD */
-  .com-card{border:1px solid #d8d4cc;border-radius:4px;overflow:hidden;margin-bottom:16px;page-break-inside:avoid;}
-  .com-header{background:#1a2744;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
-  .com-num{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:rgba(255,255,255,0.3);margin-right:12px;}
-  .com-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#fff;}
-  .com-titular{font-size:11px;color:rgba(255,255,255,0.6);}
-  .com-status{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;padding:3px 10px;border-radius:2px;}
-  .status-ok{background:#edf7f1;color:#1a5c38;}
-  .status-miss{background:#fdf0f0;color:#9b2020;}
-  .com-body{display:grid;grid-template-columns:1fr 1fr;gap:0;}
-  .com-section{padding:14px 16px;}
-  .com-section:first-child{border-right:1px solid #d8d4cc;}
-  .com-label{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#6b6560;margin-bottom:8px;}
-  .task-item{font-size:12px;color:#1a1a1a;display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;line-height:1.4;}
-  .task-dot{width:3px;height:3px;border-radius:50%;background:#2c5f8a;flex-shrink:0;margin-top:6px;}
-  .detail-key{font-family:'Syne',sans-serif;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6560;margin-top:8px;}
-  .detail-val{font-size:12px;font-weight:500;color:#1a1a1a;}
-  .detail-val.accent{color:#c47b1a;font-weight:700;}
-  .alerta-box{background:#fdf0f0;border:1px solid #f5c0c0;border-radius:3px;padding:6px 10px;margin-top:8px;font-size:11px;color:#9b2020;}
-  /* REQUERIMIENTOS */
-  .req-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px;}
-  .req-table th{background:#f4f2ee;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#6b6560;padding:7px 10px;text-align:left;border-bottom:1px solid #d8d4cc;}
-  .req-table td{padding:7px 10px;border-bottom:1px solid #f0ede8;vertical-align:top;}
-  .req-table tr:last-child td{border-bottom:none;}
-  .req-done{color:#1a5c38;font-weight:700;}
-  .req-pend{color:#9b2020;}
-  .req-total-row td{background:#f4f2ee;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;border-top:2px solid #d8d4cc;}
-  .monto-cell{font-family:'Syne',sans-serif;font-weight:700;color:#c47b1a;}
-  /* COST SUMMARY */
-  .cost-table{width:100%;border-collapse:collapse;font-size:13px;}
-  .cost-table th{background:#1a2744;color:#fff;font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:10px 14px;text-align:left;}
-  .cost-table td{padding:10px 14px;border-bottom:1px solid #d8d4cc;}
-  .cost-table tr:last-child td{border-bottom:none;}
-  .cost-table tr:nth-child(even) td{background:#f9f8f6;}
-  .cost-total-row td{background:#c47b1a;color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;}
-  /* FOOTER */
-  .rpt-footer{background:#1a2744;color:rgba(255,255,255,0.5);text-align:center;padding:16px;font-size:10px;letter-spacing:1px;margin-top:40px;}
-  .rpt-footer strong{color:rgba(255,255,255,0.7);}
-  @media print{
-    .page{padding:20px;}
-    .com-card{page-break-inside:avoid;}
-  }
-</style>
-</head>
-<body>
-
-<div class="rpt-header">
-  <div class="rpt-tag">Informe Oficial · Generado el ${now}</div>
-  <div class="rpt-title1">${data.header?.titulo1 || "Día de la Madre"}</div>
-  <div class="rpt-title2">${data.header?.titulo2 || "Chalaysanta"}</div>
-  <div class="rpt-sub">${data.header?.sub || ""}</div>
-  <div class="rpt-meta">
-    <div class="rpt-meta-item"><span class="rpt-meta-label">Fecha del evento</span><span class="rpt-meta-value">${data.header?.fecha || ""}</span></div>
-    <div class="rpt-meta-item"><span class="rpt-meta-label">Ubicación</span><span class="rpt-meta-value">${data.header?.ubicacion || ""}</span></div>
-    <div class="rpt-meta-item"><span class="rpt-meta-label">Total comisiones</span><span class="rpt-meta-value">${comisiones.length} comisiones</span></div>
-    <div class="rpt-meta-item"><span class="rpt-meta-label">${data.footer?.minuta || ""}</span><span class="rpt-meta-value">${data.footer?.lugar || ""}</span></div>
-  </div>
-</div>
-
-<div class="page">
-
-<!-- RESUMEN EJECUTIVO -->
-<div class="summary-grid">
-  <div class="summary-card"><div class="summary-num">${completeComisiones}/${comisiones.length}</div><div class="summary-label">Comisiones completas</div></div>
-  <div class="summary-card"><div class="summary-num">${doneReqs}/${allReqs.length}</div><div class="summary-label">Requerimientos listos</div></div>
-  <div class="summary-card"><div class="summary-num">${pctTotal}%</div><div class="summary-label">Avance total</div></div>
-  <div class="summary-card highlight"><div class="summary-num">S/ ${totalCost.toFixed(2)}</div><div class="summary-label">Costo total estimado</div></div>
-</div>
-
-<!-- FECHAS PRIORITARIAS -->
-<div class="section">
-  <div class="section-title">⚠ Fechas Prioritarias</div>
-  <div class="alert-box">
-    <div class="alert-title">Entregas — Atención Inmediata Requerida</div>
-    <div class="alert-dates">
-      <div style="display:flex;align-items:center;gap:8px;"><span class="date-pill">${data.alertas?.fecha1 || ""}</span><span class="date-desc">${data.alertas?.desc1 || ""}</span></div>
-      <div style="display:flex;align-items:center;gap:8px;"><span class="date-pill">${data.alertas?.fecha2 || ""}</span><span class="date-desc">${data.alertas?.desc2 || ""}</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- COMISIONES -->
-<div class="section">
-  <div class="section-title">📋 Comisiones de Trabajo</div>
-  ${comisiones.map((c, i) => {
-    const reqs = c.requerimientos || [];
-    const montoTotal = reqs.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0);
-    const doneR = reqs.filter(r => r.done).length;
-    const pctR = reqs.length > 0 ? Math.round(doneR / reqs.length * 100) : 0;
-    return `
-  <div class="com-card">
-    <div class="com-header">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="com-num">${String(i+1).padStart(2,"0")}</span>
-        <div>
-          <div class="com-title">${c.titulo || ""}</div>
-          <div class="com-titular">Titular: ${c.titular || ""}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${montoTotal > 0 ? `<span style="font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:#c47b1a;">S/ ${montoTotal.toFixed(2)}</span>` : ""}
-        <span style="font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;padding:3px 10px;border-radius:2px;background:${c.status==="complete"?"#edf7f1":"#fdf0f0"};color:${c.status==="complete"?"#1a5c38":"#9b2020"};">${c.status==="complete"?"✓ Completo":"⚠ Falta personal"}</span>
-        <span style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:${pctR>=80?"#1a5c38":pctR>=40?"#c47b1a":"#9b2020"};">${pctR}%</span>
-      </div>
-    </div>
-    <div class="com-body">
-      <div class="com-section">
-        <div class="com-label">Tareas principales</div>
-        ${(c.tareas||[]).map(t => `<div class="task-item"><div class="task-dot"></div><span>${t}</span></div>`).join("")}
-      </div>
-      <div class="com-section">
-        ${c.personal ? `<div class="detail-key">Personal requerido</div><div class="detail-val">${c.personal}</div>` : ""}
-        ${c.apoyo ? `<div class="detail-key">Personal de apoyo</div><div class="detail-val">${c.apoyo}</div>` : ""}
-        <div class="detail-key">Entrega de requerimiento</div><div class="detail-val accent">${c.entrega || ""}</div>
-        <div class="detail-key">Informe de avance</div><div class="detail-val accent">${c.informe || ""}</div>
-        ${c.alerta ? `<div class="alerta-box">⚠ ${c.alerta}</div>` : ""}
-      </div>
-    </div>
-    ${reqs.length > 0 ? `
-    <div style="padding:0 16px 14px;">
-      <table class="req-table">
-        <thead><tr><th>Requerimiento</th><th>Detalle</th><th>Cantidad</th><th>Monto S/</th><th>Estado</th></tr></thead>
-        <tbody>
-          ${reqs.map(r => `<tr>
-            <td>${r.nombre||""}</td>
-            <td style="color:#6b6560;">${r.detalle||"-"}</td>
-            <td>${r.cantidad||"-"}</td>
-            <td class="monto-cell">${r.monto?`S/ ${parseFloat(r.monto).toFixed(2)}`:"-"}</td>
-            <td class="${r.done?"req-done":"req-pend"}">${r.done?"✓ Listo":"○ Pendiente"}</td>
-          </tr>`).join("")}
-          ${montoTotal > 0 ? `<tr class="req-total-row"><td colspan="3">TOTAL COMISIÓN</td><td class="monto-cell">S/ ${montoTotal.toFixed(2)}</td><td>${doneR}/${reqs.length} listos</td></tr>` : ""}
-        </tbody>
-      </table>
-    </div>` : ""}
-  </div>`;
-  }).join("")}
-</div>
-
-<!-- RESUMEN DE COSTOS -->
-<div class="section">
-  <div class="section-title">💰 Resumen de Costos por Comisión</div>
-  <table class="cost-table">
-    <thead><tr><th>#</th><th>Comisión</th><th>Titular</th><th>Items</th><th>Listos</th><th>Avance</th><th>Costo S/</th></tr></thead>
-    <tbody>
-      ${comisiones.map((c, i) => {
-        const reqs = c.requerimientos || [];
-        const monto = reqs.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0);
-        const done = reqs.filter(r => r.done).length;
-        const pct = reqs.length > 0 ? Math.round(done/reqs.length*100) : 0;
-        return `<tr>
-          <td style="font-family:'Syne',sans-serif;font-weight:700;color:#6b6560;">${String(i+1).padStart(2,"0")}</td>
-          <td style="font-weight:500;">${c.titulo||""}</td>
-          <td style="color:#6b6560;">${c.titular||""}</td>
-          <td style="text-align:center;">${reqs.length}</td>
-          <td style="text-align:center;color:#1a5c38;font-weight:700;">${done}</td>
-          <td style="text-align:center;font-family:'Syne',sans-serif;font-weight:700;color:${pct>=80?"#1a5c38":pct>=40?"#c47b1a":"#9b2020"};">${pct}%</td>
-          <td style="font-family:'Syne',sans-serif;font-weight:700;color:#c47b1a;">${monto>0?`S/ ${monto.toFixed(2)}`:"-"}</td>
-        </tr>`;
-      }).join("")}
-      <tr class="cost-total-row">
-        <td colspan="3">TOTAL GENERAL DEL PROYECTO</td>
-        <td style="text-align:center;">${allReqs.length}</td>
-        <td style="text-align:center;">${doneReqs}</td>
-        <td style="text-align:center;">${pctTotal}%</td>
-        <td>S/ ${totalCost.toFixed(2)}</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-</div>
-
-<div class="rpt-footer">
-  <strong>${data.footer?.nombre || ""}</strong> &nbsp;·&nbsp; ${data.footer?.lugar || ""} &nbsp;·&nbsp; ${data.footer?.fecha || ""} &nbsp;·&nbsp; ${data.footer?.minuta || ""} &nbsp;·&nbsp; Informe generado el ${now}
-</div>
-
-</body>
-</html>`;
-
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `informe-chalaysanta-${new Date().toISOString().slice(0,10)}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const doLogout = async () => {
@@ -535,22 +214,9 @@ export default function App() {
   };
 
   // ── LOADING ──
-  if (!data || !role) return null;
-  
-  if (!skeletonDone) return (
-    <div style={{ fontFamily: "'IBM Plex Sans',sans-serif", background: "#f4f2ee", minHeight: "100vh" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-      .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
-      @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-      <div style={{ background: "#1a2744", padding: "12px 48px", height: 48 }} />
-      <div className="skeleton" style={{ width: "100%", height: 260 }} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 48 }}>
-        <div className="skeleton" style={{ height: 24, width: "30%", marginBottom: 28 }} />
-        <div className="skeleton" style={{ height: 100, marginBottom: 14, borderRadius: 4 }} />
-        {[1,2,3,4].map(i => (
-          <div key={i} className="skeleton" style={{ height: 64, marginBottom: 14, borderRadius: 4, opacity: 1 - i*0.15 }} />
-        ))}
-      </div>
+  if (!data) return (
+    <div style={{ position: "fixed", inset: 0, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: "rgba(255,255,255,0.6)", fontFamily: "sans-serif", fontSize: 14, letterSpacing: 3, textTransform: "uppercase" }}>Cargando...</div>
     </div>
   );
 
@@ -617,26 +283,6 @@ export default function App() {
     <div style={{ fontFamily: "'IBM Plex Sans', sans-serif", background: "#f4f2ee", minHeight: "100vh", color: "#1a1a1a" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-        /* ── TYPOGRAPHY RESET ── */
-        html { font-size: 16px; }
-        body { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-        h1,h2,h3,h4 { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1.1; }
-        p, span, div, li, td { font-family: 'IBM Plex Sans', sans-serif; }
-        /* Uniform font sizes */
-        .text-xs  { font-size: 10px !important; }
-        .text-sm  { font-size: 12px !important; }
-        .text-base{ font-size: 14px !important; }
-        .text-lg  { font-size: 16px !important; }
-        .text-xl  { font-size: 18px !important; }
-        .font-syne{ font-family: 'Syne', sans-serif !important; }
-        .font-ibm { font-family: 'IBM Plex Sans', sans-serif !important; }
-        /* Uniform card text */
-        .card-title-text { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
-        .card-sub-text   { font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; }
-        .label-text      { font-family: 'Syne', sans-serif; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
-        .value-text      { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; }
-        .badge-text      { font-family: 'Syne', sans-serif; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; }
-        .monto-badge     { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; }
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         :root{
           --primary:#1a2744;--accent:#2c5f8a;--accent2:#c47b1a;
@@ -653,62 +299,6 @@ export default function App() {
         .card-anim{animation:fadeUp 0.4s ease both;}
         .cover-hover:hover .cover-overlay{opacity:1!important;}
         input:focus,textarea:focus,select:focus{outline:2px solid #2c5f8a;}
-
-        /* ── SCROLL REVEAL ── */
-        .reveal{opacity:0;transform:translateY(32px);transition:opacity 0.7s ease,transform 0.7s ease;}
-        .reveal.visible{opacity:1;transform:translateY(0);}
-        .reveal-left{opacity:0;transform:translateX(-32px);transition:opacity 0.7s ease,transform 0.7s ease;}
-        .reveal-left.visible{opacity:1;transform:translateX(0);}
-        .reveal-scale{opacity:0;transform:scale(0.92);transition:opacity 0.6s ease,transform 0.6s ease;}
-        .reveal-scale.visible{opacity:1;transform:scale(1);}
-
-        /* ── SKELETON LOADING ── */
-        .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        .skeleton-header{width:100%;height:260px;background:linear-gradient(90deg,#1a2744 25%,#243660 50%,#1a2744 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
-        .skeleton-card{height:64px;margin-bottom:14px;border-radius:4px;}
-        .skeleton-text{height:14px;margin-bottom:8px;border-radius:2px;}
-        .skeleton-text.short{width:60%;}
-
-        /* ── FLIP COUNTER ── */
-        .flip-digit{display:inline-flex;flex-direction:column;overflow:hidden;height:1.1em;position:relative;}
-        .flip-digit-inner{display:flex;flex-direction:column;transition:transform 0.4s cubic-bezier(.4,0,.2,1);}
-        @keyframes flipIn{0%{transform:rotateX(-90deg);opacity:0;}60%{transform:rotateX(10deg);}100%{transform:rotateX(0);opacity:1;}}
-        .flip-num{animation:flipIn 0.35s ease both;}
-
-        /* ── PROGRESS BAR ANIMATED ── */
-        .progress-bar-fill{width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
-        .progress-bar-fill.animated{width:var(--target-width);}
-
-        /* ── TYPEWRITER ── */
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-        .cursor{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;animation:blink 0.8s infinite;vertical-align:text-bottom;}
-
-        /* ── CARD EXPAND ── */
-        .card-body-animated{overflow:hidden;transition:max-height 0.45s cubic-bezier(.4,0,.2,1),opacity 0.35s ease;}
-
-        /* ── HOVER EFFECTS ── */
-        .commission-card-hover{transition:box-shadow 0.25s,transform 0.25s,border-color 0.25s;}
-        .commission-card-hover:hover{box-shadow:0 8px 32px rgba(0,0,0,0.13);transform:translateY(-2px);}
-
-        /* ── ARC ANIMATED ── */
-        .arc-path{stroke-dasharray:1000;stroke-dashoffset:1000;transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);}
-        .arc-path.animated{stroke-dashoffset:0;}
-
-        /* ── PARALLAX ── */
-        .parallax-cover{will-change:transform;transition:transform 0.05s linear;}
-
-        /* ── COUNT UP ── */
-        .count-up{font-variant-numeric:tabular-nums;}
-
-        /* ── SYMMETRY FIX ── */
-        .sym-label{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-        .sym-value{font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:500;color:#fff;}
-        .sym-key{font-family:'Syne',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#6b6560;}
-        .sym-val{font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;color:#1a1a1a;}
-        .sym-task{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#1a1a1a;line-height:1.5;}
-        .sym-badge{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;padding:4px 12px;border-radius:2px;}
-        .sym-detail{font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:#6b6560;}
         @media(max-width:600px){
           .title2-anim{word-break:break-word!important;max-width:100%!important;font-size:clamp(26px,8vw,48px)!important;}
           .title1-anim{font-size:clamp(22px,7vw,40px)!important;}
@@ -757,7 +347,7 @@ export default function App() {
         {/* Cover image */}
         <div className="cover-hover" style={{ width: "100%", height: 260, overflow: "hidden", position: "relative", background: "#0d1b35" }}>
           {data.images?.cover
-            ? <img id="parallax-img" src={data.images.cover} alt="" style={{ width: "100%", height: "130%", objectFit: "cover", opacity: 0.5, marginTop: "-15%", willChange: "transform" }} />
+            ? <img src={data.images.cover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
             : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg,#0d1b35 0%,#1a2744 60%,#2c5f8a 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontSize: 11, letterSpacing: 2, color: "rgba(255,255,255,0.2)", textTransform: "uppercase" }}>📷 Imagen de portada</div>
           }
           {isAdmin && adminMode && (
@@ -773,15 +363,13 @@ export default function App() {
           <div style={{ display: "inline-block", background: "#c47b1a", color: "#fff", fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, marginBottom: 20 }}>
             Evento Oficial · {h.fechaEvento}
           </div>
-          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,7vw,52px)", fontWeight: 800, lineHeight: 1.1, color: "#fff", marginBottom: 6, wordBreak: "break-word", maxWidth: "100%", minHeight: "1.2em" }}>
-            {typewriter.t1}{!typewriter.t1done && <span className="cursor" style={{background:"#fff"}}/>}
+          <h1 className="title1-anim" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,7vw,52px)", fontWeight: 800, lineHeight: 1.1, color: "#fff", marginBottom: 6, wordBreak: "break-word", maxWidth: "100%" }}>
+            {h.titulo1}
           </h1>
-          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,8vw,62px)", fontWeight: 800, lineHeight: 1.1, color: "#c47b1a", marginBottom: 14, wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%", minHeight: "1.2em" }}>
-            {typewriter.t1done && <>{typewriter.t2}{!typewriter.t2done && <span className="cursor" style={{background:"#c47b1a"}}/>}</>}
+          <h1 className="title2-anim" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,8vw,62px)", fontWeight: 800, lineHeight: 1.1, color: "#c47b1a", marginBottom: 14, wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%" }}>
+            {h.titulo2}
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300, minHeight: "1.4em" }}>
-            {typewriter.t2done && <>{typewriter.sub}{!typewriter.subdone && <span className="cursor" style={{background:"rgba(255,255,255,0.5)"}}/>}</>}
-          </p>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300 }}>{h.sub}</p>
 
           {/* COUNTDOWN */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32 }}>
@@ -793,7 +381,7 @@ export default function App() {
                 {[["dias","días"],["horas","horas"],["min","min"],["seg","seg"]].map(([key, label], i) => (
                   <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <div className="cd-box-resp" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", textAlign: "center", minWidth: 60, flex: "1 1 60px", backdropFilter: "blur(4px)" }}>
-                      <span className="cd-num-resp flip-num" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: "clamp(18px,5vw,32px)", fontWeight: 800, color: "#fff", lineHeight: 1, fontVariantNumeric: "tabular-nums", minWidth: "2ch", textAlign: "center" }}>
+                      <span className="cd-num-resp" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: "clamp(18px,5vw,32px)", fontWeight: 800, color: "#fff", lineHeight: 1 }}>
                         {String(countdown[key] ?? "--").padStart(2, "0")}
                       </span>
                       <span className="cd-unit-resp" style={{ display: "block", fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{label}</span>
@@ -852,11 +440,11 @@ export default function App() {
           const pctComisiones = totalComisiones > 0 ? Math.round(completeComisiones / totalComisiones * 100) : 0;
           const pctTotal = Math.round((pctReqs + pctComisiones) / 2);
           return (
-            <div className="reveal-scale" style={{ background: "#fff", border: "1px solid #d8d4cc", borderRadius: 4, padding: "20px 28px", marginBottom: 28, display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
+            <div style={{ background: "#fff", border: "1px solid #d8d4cc", borderRadius: 4, padding: "20px 28px", marginBottom: 28, display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap" }}>
               <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 180 }}>
                 <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#6b6560", marginBottom: 4 }}>Avance total del proyecto</div>
                 <div style={{ height: 8, background: "#e0dbd2", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
-                  <div style={{ height: "100%", background: pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020", borderRadius: 4, width: countAnimated ? `${pctTotal}%` : "0%", transition: "width 1.4s cubic-bezier(.4,0,.2,1)" }} />
+                  <div style={{ height: "100%", background: pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020", borderRadius: 4, width: `${pctTotal}%`, transition: "width .6s" }} />
                 </div>
                 <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 12, color: "#6b6560" }}>✓ <strong>{doneReqs}</strong>/{totalReqs} requerimientos listos</span>
@@ -865,22 +453,22 @@ export default function App() {
               </div>
               <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctReqs} size={90} color="#2c5f8a" animated={arcAnimated} />
+                  <ArcGauge pct={pctReqs} size={90} color="#2c5f8a" />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Requerimientos</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctComisiones} size={90} color="#c47b1a" animated={arcAnimated} />
+                  <ArcGauge pct={pctComisiones} size={90} color="#c47b1a" />
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Comisiones</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <ArcGauge pct={pctTotal} size={110} color={pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020"} animated={arcAnimated} />
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Proyecto Total</div>
+                  <ArcGauge pct={pctTotal} size={110} color={pctTotal >= 80 ? "#1a5c38" : pctTotal >= 50 ? "#c47b1a" : "#9b2020"} />
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6560", marginTop: 2 }}>Total</div>
                 </div>
                 {/* COSTO TOTAL */}
                 <div style={{ textAlign: "center", background: "#1a2744", padding: "12px 20px", borderRadius: 4, minWidth: 110 }}>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total</div>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#c47b1a", lineHeight: 1 }}>
-                    S/ {displayCost.toFixed(2)}
+                    S/ {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).reduce((s, r) => s + (parseFloat(r.monto) || 0), 0), 0).toFixed(2)}
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
                     {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} items
@@ -907,7 +495,7 @@ export default function App() {
             const doneReqs = reqs.filter(r => r.done).length;
             const pct = reqs.length > 0 ? Math.round(doneReqs / reqs.length * 100) : 0;
             return (
-              <div key={i} className="card-anim reveal commission-card-hover" style={{ background: "#fff", border: `1px solid ${isAdmin && adminMode ? "#c4b89a" : "#d8d4cc"}`, borderRadius: 4, overflow: "hidden", animationDelay: `${i * 0.05}s` }}>
+              <div key={i} className="card-anim" style={{ background: "#fff", border: `1px solid ${isAdmin && adminMode ? "#c4b89a" : "#d8d4cc"}`, borderRadius: 4, overflow: "hidden", animationDelay: `${i * 0.05}s` }}>
                 {/* Card header */}
                 <div onClick={() => setOpenCards(o => ({ ...o, [i]: !o[i] }))} style={{ display: "flex", alignItems: "stretch", cursor: "pointer", userSelect: "none" }}>
                   <div style={{ width: 56, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>
@@ -935,7 +523,7 @@ export default function App() {
                           ✎ Editar
                         </button>
                       )}
-                      <ArcGauge pct={pct} size={52} color={pct >= 80 ? "#1a5c38" : pct >= 40 ? "#c47b1a" : "#9b2020"} bg="#e0dbd2" animated={arcAnimated} />
+                      <ArcGauge pct={pct} size={52} color={pct >= 80 ? "#1a5c38" : pct >= 40 ? "#c47b1a" : "#9b2020"} bg="#e0dbd2" />
                       <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", fontWeight: 700, padding: "4px 12px", borderRadius: 2, background: c.status === "complete" ? "#edf7f1" : "#fdf0f0", color: c.status === "complete" ? "#1a5c38" : "#9b2020" }}>
                         {c.status === "complete" ? "Completo" : "Falta personal"}
                       </span>
@@ -946,7 +534,7 @@ export default function App() {
 
                 {/* Card body */}
                 {isOpen && (
-                  <div style={{ borderTop: "1px solid #d8d4cc", animation: "fadeUp 0.35s ease both" }}>
+                  <div style={{ borderTop: "1px solid #d8d4cc" }}>
                     {/* Tabs */}
                     <div style={{ display: "flex", borderBottom: "1px solid #d8d4cc", background: "#fafaf8" }}>
                       {["📋 Tareas", `📦 Requerimientos ${reqs.length > 0 ? `${doneReqs}/${reqs.length}` : ""}`].map((label, ti) => (
@@ -1008,7 +596,7 @@ export default function App() {
                         </div>
                         {reqs.length > 0 && (
                           <div style={{ height: 4, background: "#e0dbd2", borderRadius: 2, overflow: "hidden", marginBottom: 14 }}>
-                            <div style={{ height: "100%", background: "#1a5c38", borderRadius: 2, width: `${pct}%`, transition: "width 1.2s cubic-bezier(.4,0,.2,1)" }} />
+                            <div style={{ height: "100%", background: "#1a5c38", borderRadius: 2, width: `${pct}%`, transition: "width .4s" }} />
                           </div>
                         )}
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1039,17 +627,6 @@ export default function App() {
           })}
         </div>
       </main>
-
-      {/* DOWNLOAD REPORT BUTTON */}
-      <div style={{ background: "#f4f2ee", borderTop: "2px solid #d8d4cc", padding: "32px 48px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-        <div>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 14, fontWeight: 700, color: "#1a2744", marginBottom: 4 }}>Informe del Proyecto</div>
-          <div style={{ fontSize: 12, color: "#6b6560" }}>Descarga el informe completo con requerimientos, costos y estado de todas las comisiones.</div>
-        </div>
-        <button onClick={generateReport} style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 28px", background: "#1a2744", color: "#fff", fontFamily: "'Syne',sans-serif", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", border: "none", cursor: "pointer", fontWeight: 700, borderRadius: 3, flexShrink: 0 }}>
-          <span style={{ fontSize: 18 }}>📄</span> Descargar Informe
-        </button>
-      </div>
 
       {/* FOOTER */}
       <footer style={{ background: "#1a2744", color: "rgba(255,255,255,0.4)", marginTop: 48, position: "relative", overflow: "hidden" }}>
@@ -1197,14 +774,16 @@ export default function App() {
 
 
 // ── ARC GAUGE COMPONENT ──
-function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "", animated = false }) {
+function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "" }) {
   const r = (size / 2) - 8;
   const cx = size / 2;
   const cy = size / 2;
+  // Draw arc from 210deg to 330deg (240deg sweep) like speedometer
   const startAngle = 210;
   const sweep = 240;
-  const toRad = deg => (deg * Math.PI) / 180;
+  const endAngle = startAngle + sweep * (pct / 100);
 
+  const toRad = deg => (deg * Math.PI) / 180;
   const arcPath = (start, end, radius) => {
     const s = { x: cx + radius * Math.cos(toRad(start)), y: cy + radius * Math.sin(toRad(start)) };
     const e = { x: cx + radius * Math.cos(toRad(end)), y: cy + radius * Math.sin(toRad(end)) };
@@ -1212,50 +791,25 @@ function ArcGauge({ pct, size = 80, color = "#1a5c38", bg = "#e0dbd2", label = "
     return `M ${s.x} ${s.y} A ${radius} ${radius} 0 ${large} 1 ${e.x} ${e.y}`;
   };
 
-  // Calculate stroke-dasharray for animation
-  const fullArcEnd = startAngle + sweep;
-  const fullPath = arcPath(startAngle, fullArcEnd, r);
-  const progressEnd = startAngle + sweep * (pct / 100);
-  const progressPath = arcPath(startAngle, progressEnd > startAngle + 0.1 ? progressEnd : startAngle + 0.1, r);
-
-  // Animated count up
-  const [displayPct, setDisplayPct] = useState(0);
-  useEffect(() => {
-    if (!animated) { setDisplayPct(pct); return; }
-    let cur = 0;
-    const timer = setInterval(() => {
-      cur += 1;
-      if (cur >= pct) { setDisplayPct(pct); clearInterval(timer); }
-      else setDisplayPct(cur);
-    }, 1200 / Math.max(pct, 1));
-    return () => clearInterval(timer);
-  }, [pct, animated]);
-
-  const [drawn, setDrawn] = useState(false);
-  useEffect(() => {
-    if (animated) setTimeout(() => setDrawn(true), 300);
-    else setDrawn(true);
-  }, [animated]);
-
-  const circumference = Math.PI * r * (sweep / 180);
-  const offset = circumference * (1 - (drawn ? displayPct / 100 : 0));
-
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{overflow:"visible"}}>
-      <path d={arcPath(startAngle, fullArcEnd, r)} fill="none" stroke={bg} strokeWidth={6} strokeLinecap="round" />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* Background arc */}
+      <path d={arcPath(210, 210 + 240, r)} fill="none" stroke={bg} strokeWidth={6} strokeLinecap="round" />
+      {/* Progress arc */}
       {pct > 0 && (
-        <path
-          d={progressPath}
-          fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={animated ? offset : 0}
-          style={{ transition: drawn ? "stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)" : "none" }}
-        />
+        <path d={arcPath(210, endAngle, r)} fill="none" stroke={color} strokeWidth={6} strokeLinecap="round" />
       )}
-      <text x={cx} y={cy + 2} textAnchor="middle" dominantBaseline="middle"
-        style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.2, fontWeight: 800, fill: color, transition: "all 0.3s" }}>
-        {displayPct}%
+      {/* Percentage text */}
+      <text x={cx} y={cy + 4} textAnchor="middle" dominantBaseline="middle"
+        style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.2, fontWeight: 800, fill: color }}>
+        {pct}%
       </text>
+      {label && (
+        <text x={cx} y={cy + size * 0.22} textAnchor="middle"
+          style={{ fontFamily: "'Syne',sans-serif", fontSize: size * 0.1, fill: "#6b6560" }}>
+          {label}
+        </text>
+      )}
     </svg>
   );
 }
