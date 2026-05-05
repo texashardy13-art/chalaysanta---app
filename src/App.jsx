@@ -5,7 +5,6 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebas
 import { ref as storageRef, uploadString, getDownloadURL } from "firebase/storage";
 import { INITIAL_DATA } from "./initialData";
 
-// v9 - timing fixes for typewriter and data loading
 const VIEWER_PASS = "chalaysanta2026";
 const ADMIN_EMAIL = "texashardy13@gmail.com";
 
@@ -29,8 +28,6 @@ export default function App() {
   const [prevNums, setPrevNums] = useState({dias:'--',horas:'--',min:'--',seg:'--'});
   const [arcAnimated, setArcAnimated] = useState(false);
   const [countAnimated, setCountAnimated] = useState(false);
-  const [displayCost, setDisplayCost] = useState(0);
-  const [typewriter, setTypewriter] = useState({t1:'',t2:'',sub:'',t1done:false,t2done:false,subdone:false});
   const [skeletonDone, setSkeletonDone] = useState(false);
 
   // ── FIREBASE REALTIME LISTENER ──
@@ -97,29 +94,18 @@ export default function App() {
 
   // ── COUNT ANIMATED FLAG ──
   useEffect(() => {
-    if (!data || !data.comisiones) return;
-    setCountAnimated(true);
-  }, [data]);
+    if (skeletonDone) setCountAnimated(true);
+  }, [skeletonDone]);
 
-  // ── TYPEWRITER - only runs once ──
-  const typewriterDoneRef = useRef(false);
   useEffect(() => {
-    if (!skeletonDone || !data || !data.header?.titulo1 || typewriterDoneRef.current) return;
-    typewriterDoneRef.current = true;
+    if (!skeletonDone || !data || !data.header?.titulo1) return;
     const t1 = data.header?.titulo1 || '';
     const t2 = data.header?.titulo2 || '';
     const sub = data.header?.sub || '';
     let i1=0,i2=0,isub=0;
-    setTypewriter({t1:'',t2:'',sub:'',t1done:false,t2done:false,subdone:false});
     const type1 = setInterval(() => {
-      if(i1<=t1.length){ setTypewriter(tw=>({...tw,t1:t1.slice(0,i1)})); i1++; }
-      else { clearInterval(type1); setTypewriter(tw=>({...tw,t1done:true}));
         const type2 = setInterval(() => {
-          if(i2<=t2.length){ setTypewriter(tw=>({...tw,t2:t2.slice(0,i2)})); i2++; }
-          else { clearInterval(type2); setTypewriter(tw=>({...tw,t2done:true}));
             const typesub = setInterval(() => {
-              if(isub<=sub.length){ setTypewriter(tw=>({...tw,sub:sub.slice(0,isub)})); isub++; }
-              else { clearInterval(typesub); setTypewriter(tw=>({...tw,subdone:true})); }
             }, 18);
           }
         }, 60);
@@ -444,7 +430,6 @@ export default function App() {
         .progress-bar-fill{width:0%;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
         .progress-bar-fill.animated{width:var(--target-width);}
 
-        /* ── TYPEWRITER ── */
         @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
         .cursor{display:inline-block;width:2px;height:1em;background:currentColor;margin-left:2px;animation:blink 0.8s infinite;vertical-align:text-bottom;}
 
@@ -537,14 +522,14 @@ export default function App() {
           <div style={{ display: "inline-block", background: "#c47b1a", color: "#fff", fontFamily: "'Syne',sans-serif", fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, marginBottom: 20 }}>
             Evento Oficial · {h.fechaEvento}
           </div>
-          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,7vw,52px)", fontWeight: 800, lineHeight: 1.1, color: "#fff", marginBottom: 6, wordBreak: "break-word", maxWidth: "100%", minHeight: "1.2em" }}>
-            {typewriter.t1}{!typewriter.t1done && <span className="cursor" style={{background:"#fff"}}/>}
+          <h1 className="title1-anim" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,7vw,52px)", fontWeight: 800, lineHeight: 1.1, color: "#fff", marginBottom: 6, wordBreak: "break-word", maxWidth: "100%" }}>
+            {h.titulo1}
           </h1>
-          <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,8vw,62px)", fontWeight: 800, lineHeight: 1.1, color: "#c47b1a", marginBottom: 14, wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%", minHeight: "1.2em" }}>
-            {typewriter.t1done && <>{typewriter.t2}{!typewriter.t2done && <span className="cursor" style={{background:"#c47b1a"}}/>}</>}
+          <h1 className="title2-anim" style={{ fontFamily: "'Syne',sans-serif", fontSize: "clamp(24px,8vw,62px)", fontWeight: 800, lineHeight: 1.1, color: "#c47b1a", marginBottom: 14, wordBreak: "break-word", overflowWrap: "anywhere", maxWidth: "100%" }}>
+            {h.titulo2}
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300, minHeight: "1.4em" }}>
-            {typewriter.t2done && <>{typewriter.sub}{!typewriter.subdone && <span className="cursor" style={{background:"rgba(255,255,255,0.5)"}}/>}</>}
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginBottom: 28, fontWeight: 300 }}>
+            {h.sub}
           </p>
 
           {/* COUNTDOWN */}
