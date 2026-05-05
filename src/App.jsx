@@ -58,9 +58,13 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // ── SKELETON DONE ──
+  // ── SKELETON DONE - only runs once ──
+  const skeletonShownRef = useRef(false);
   useEffect(() => {
-    if (data && role && data.comisiones) setTimeout(() => setSkeletonDone(true), 800);
+    if (data && role && data.comisiones && !skeletonShownRef.current) {
+      skeletonShownRef.current = true;
+      setTimeout(() => setSkeletonDone(true), 600);
+    }
   }, [data, role]);
 
   // ── SCROLL REVEAL ──
@@ -71,7 +75,7 @@ export default function App() {
     }, { threshold: 0.12 });
     document.querySelectorAll('.reveal,.reveal-left,.reveal-scale').forEach(el => observer.observe(el));
     return () => observer.disconnect();
-  }, [skeletonDone, data]);
+  }, [skeletonDone]);
 
   // ── PARALLAX ──
   useEffect(() => {
@@ -83,9 +87,11 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ── ARC ANIMATION ──
+  // ── ARC ANIMATION - only once ──
+  const arcShownRef = useRef(false);
   useEffect(() => {
-    if (!skeletonDone) return;
+    if (!skeletonDone || arcShownRef.current) return;
+    arcShownRef.current = true;
     setTimeout(() => setArcAnimated(true), 600);
   }, [skeletonDone]);
 
@@ -97,9 +103,11 @@ export default function App() {
     setCountAnimated(true);
   }, [data]);
 
-  // ── TYPEWRITER ──
+  // ── TYPEWRITER - only runs once ──
+  const typewriterDoneRef = useRef(false);
   useEffect(() => {
-    if (!skeletonDone || !data || !data.header?.titulo1) return;
+    if (!skeletonDone || !data || !data.header?.titulo1 || typewriterDoneRef.current) return;
+    typewriterDoneRef.current = true;
     const t1 = data.header?.titulo1 || '';
     const t2 = data.header?.titulo2 || '';
     const sub = data.header?.sub || '';
