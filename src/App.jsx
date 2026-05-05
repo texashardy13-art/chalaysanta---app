@@ -295,32 +295,6 @@ export default function App() {
     setPanelData({ ...panelData, requerimientos: reqs });
   };
 
-  // ── LOADING ──
-  if (!data) return (
-    <div style={{ position: 'fixed', inset: 0, background: '#1a2744', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'sans-serif', fontSize: 14, letterSpacing: 3, textTransform: 'uppercase' }}>Cargando...</div>
-    </div>
-  );
-
-  if (!role) return loginScreen();
-
-  if (!skeletonDone) return (
-    <div style={{ fontFamily: "'IBM Plex Sans',sans-serif", background: "#f4f2ee", minHeight: "100vh" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
-      .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
-      @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-      <div style={{ background: "#1a2744", padding: "12px 48px", height: 48 }} />
-      <div className="skeleton" style={{ width: "100%", height: 260 }} />
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 48 }}>
-        <div className="skeleton" style={{ height: 24, width: "30%", marginBottom: 28 }} />
-        <div className="skeleton" style={{ height: 100, marginBottom: 14, borderRadius: 4 }} />
-        {[1,2,3,4].map(i => (
-          <div key={i} className="skeleton" style={{ height: 64, marginBottom: 14, borderRadius: 4, opacity: 1 - i*0.15 }} />
-        ))}
-      </div>
-    </div>
-  );
-
   const loginScreen = () => (
     <div style={{ position: "fixed", inset: 0, background: "#1a2744", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'IBM Plex Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');`}</style>
@@ -373,6 +347,34 @@ export default function App() {
       </div>
     </div>
   );
+
+  // ── LOADING ──
+  if (!data) return (
+    <div style={{ position: 'fixed', inset: 0, background: '#1a2744', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'sans-serif', fontSize: 14, letterSpacing: 3, textTransform: 'uppercase' }}>Cargando...</div>
+    </div>
+  );
+
+  if (!role) return loginScreen();
+
+  if (!skeletonDone) return (
+    <div style={{ fontFamily: "'IBM Plex Sans',sans-serif", background: "#f4f2ee", minHeight: "100vh" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+      .skeleton{background:linear-gradient(90deg,#e0dbd2 25%,#f0ede8 50%,#e0dbd2 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;}
+      @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
+      <div style={{ background: "#1a2744", padding: "12px 48px", height: 48 }} />
+      <div className="skeleton" style={{ width: "100%", height: 260 }} />
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 48 }}>
+        <div className="skeleton" style={{ height: 24, width: "30%", marginBottom: 28 }} />
+        <div className="skeleton" style={{ height: 100, marginBottom: 14, borderRadius: 4 }} />
+        {[1,2,3,4].map(i => (
+          <div key={i} className="skeleton" style={{ height: 64, marginBottom: 14, borderRadius: 4, opacity: 1 - i*0.15 }} />
+        ))}
+      </div>
+    </div>
+  );
+
+
 
   const isAdmin = role === "admin";
   const h = data.header;
