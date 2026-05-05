@@ -95,11 +95,9 @@ export default function App() {
     setTimeout(() => setArcAnimated(true), 600);
   }, [skeletonDone]);
 
-  // ── COUNT UP ANIMATION + LIVE COST UPDATE ──
+  // ── COUNT ANIMATED FLAG ──
   useEffect(() => {
     if (!data || !data.comisiones) return;
-    const totalCost = (data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0);
-    setDisplayCost(totalCost);
     setCountAnimated(true);
   }, [data]);
 
@@ -646,7 +644,7 @@ export default function App() {
                 <div style={{ textAlign: "center", background: "#1a2744", padding: "12px 20px", borderRadius: 4, minWidth: 110 }}>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Costo Total del Evento</div>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: "#c47b1a", lineHeight: 1 }}>
-                    S/ {(displayCost || (data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0)).toFixed(2)}
+                    S/ {(data.comisiones||[]).reduce((s,c)=>s+(c.requerimientos||[]).reduce((ss,r)=>ss+(parseFloat(r.monto)||0),0),0).toFixed(2)}
                   </div>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>
                     {(data.comisiones || []).reduce((sum, c) => sum + (c.requerimientos || []).length, 0)} artículos
