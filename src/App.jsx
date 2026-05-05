@@ -373,7 +373,6 @@ export default function App() {
       </div>
     </div>
   );
-  );
 
   const isAdmin = role === "admin";
   const h = data.header;
